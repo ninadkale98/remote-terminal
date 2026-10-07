@@ -11,7 +11,10 @@ import (
 	"github.com/rterm/rterm/internal/proto"
 )
 
-const usage = `rterm %s — a shared, watchable terminal on another machine, over SSH
+const usage = `rterm %s — a persistent, shared terminal on another machine, over SSH
+
+AI agents: run 'rterm guide' for the full manual (exit codes, long-running
+commands, prompts, keys, Windows notes) and the list of paired machines.
 
 On the machine Claude controls (machine 2):
   rterm host init                     set it up and print the pairing line
@@ -24,7 +27,10 @@ On the machine where Claude runs (machine 1):
   rterm NAME keys C-c | Enter | Up | "text" …      send keystrokes
   rterm NAME wait [--timeout 60] "regex"           wait for output to appear
   rterm NAME status | kill                         list sessions | restart this session
-  rterm ls | doctor NAME | remove NAME | version
+  rterm ls | doctor NAME | remove NAME             list | diagnose | unpair machines
+  rterm guide                                      manual for AI agents
+  rterm skill                                      (re)install the Claude Code skill
+  rterm version
 
 NAME:SESSION addresses a second terminal, e.g. rterm m2:server run "npm run dev".
 `
@@ -49,6 +55,10 @@ func main() {
 		code = client.Remove(args[1:])
 	case "doctor":
 		code = client.Doctor(args[1:])
+	case "guide", "docs", "manual":
+		code = client.Guide()
+	case "skill":
+		code = client.InstallSkill()
 	case "version", "--version":
 		fmt.Println("rterm", proto.Version)
 	default:

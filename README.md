@@ -63,6 +63,15 @@ rterm watch mypc            # Ctrl-] detaches; --readonly to watch without typin
 
 On machine 2: `rterm host status`, `rterm host stop` / `start`, and `rterm host attach` to watch a session locally.
 
+## Teaching Claude to use it
+
+The manual for AI agents is built into the binary, so it always matches the installed version:
+
+- `rterm guide` prints it, with the machines paired on this computer: persistent sessions, exit codes, long-running commands, prompts, keys, and PowerShell notes.
+- `rterm add` installs it as a Claude Code skill at `~/.claude/skills/rterm/SKILL.md`, so Claude loads it whenever you ask for work on another machine. Run `rterm skill` to reinstall it.
+- `rterm add` also adds a short section to `~/.claude/CLAUDE.md` naming each machine and its shell, and pointing to `rterm guide`.
+- `rterm --help` and `rterm NAME --help` give the short versions.
+
 ## How it works
 
 Each client command is one SSH call that runs `rterm host rpc` on machine 2 with a JSON request on stdin. That talks to a small agent on machine 2 (localhost only, token-protected) which owns the shells: a PTY on macOS/Linux, ConPTY on Windows. A hook in the shell's prompt records each command's exit code, so the agent knows exactly when a command has finished. Every request is logged to `~/.rterm/log/<session>.jsonl` on machine 2.

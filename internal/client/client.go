@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rterm/rterm/internal/docs"
 	"github.com/rterm/rterm/internal/paths"
 	"github.com/rterm/rterm/internal/proto"
 )
@@ -114,6 +115,20 @@ func (h Host) call(req proto.Request) (proto.Response, error) {
 
 // ---------------------------------------------------------------- commands
 
+// SessionHelp summarizes the per-machine commands.
+const SessionHelp = `rterm NAME[:SESSION] <command>
+
+  run [--timeout 120] "cmd"   type cmd into the persistent shell, wait, print output,
+                              exit with its code (124 = still running at timeout)
+  read [--lines 60]           show the current screen
+  keys KEY…                   send keys: Enter Tab Esc Up Down C-c C-d … or literal text
+  wait [--timeout 60] REGEX   wait until the latest command's output matches (124 = timeout)
+  status                      list sessions on that machine
+  kill                        restart this session's shell
+
+State (directory, variables, jobs) persists between calls. Full manual: rterm guide
+`
+
 // Session runs `rterm <name>[:session] <verb> …`.
 func Session(target string, args []string) int {
 	name, session := target, proto.DefaultSession
@@ -131,6 +146,10 @@ func Session(target string, args []string) int {
 	}
 	verb, rest := args[0], args[1:]
 	flags, rest := takeFlags(rest, true)
+	if verb == "help" || verb == "--help" || verb == "-h" || flags.bool("help") {
+		fmt.Print(SessionHelp)
+		return 0
+	}
 	req := proto.Request{Op: verb, Session: session}
 	switch verb {
 	case "run":
@@ -289,6 +308,7 @@ func Remove(args []string) int {
 	_ = saveHosts(hosts)
 	_ = writeSSHBlock(args[0], "")
 	_ = writeClaudeNote(hosts)
+	_, _ = docs.InstallSkill(machinesText(hosts))
 	fmt.Printf("✓ removed %s (its key stays authorized on that machine until you delete it from authorized_keys)\n", args[0])
 	return 0
 }
@@ -376,6 +396,7 @@ func Add(args []string) int {
 		hosts[name] = h
 		_ = saveHosts(hosts)
 		_ = writeClaudeNote(hosts)
+		_ = InstallSkill()
 		fmt.Println("✓ added", name, "(local test transport)")
 		return doctor(h)
 	}
@@ -476,6 +497,7 @@ func Add(args []string) int {
 	if err := writeClaudeNote(hosts); err == nil {
 		fmt.Println("✓ told Claude about", name, "in ~/.claude/CLAUDE.md")
 	}
+	_ = InstallSkill()
 	if rc == 0 {
 		fmt.Printf("\nReady. Watch it with:  rterm watch %s\nTry it with:           rterm %s run \"%s\"\n", name, name, helloCmd(h.OS))
 	}
@@ -536,20 +558,9 @@ func writeClaudeNote(hosts map[string]Host) error {
 		sort.Strings(names)
 		var b strings.Builder
 		b.WriteString(noteBegin + "\n## Remote machines (rterm)\n\n")
-		b.WriteString("You can run commands on these machines with the `rterm` CLI. The user watches each session live, so work as if someone is looking over your shoulder.\n\n")
-		for _, n := range names {
-			h := hosts[n]
-			shell := "bash"
-			if h.OS == "windows" {
-				shell = "PowerShell — use PowerShell syntax"
-			}
-			fmt.Fprintf(&b, "- `%s`: %s (%s).\n", n, osLabel(h.OS), shell)
-		}
-		b.WriteString("\nCommands (replace `NAME`):\n")
-		b.WriteString("- `rterm NAME run \"<cmd>\"` types the command into the shared session, waits, and returns its output and exit code. Add `--timeout 600` for long jobs.\n")
-		b.WriteString("- If `run` says the command is still running: `rterm NAME read` shows the screen, `rterm NAME wait \"<regex>\"` waits for output, `rterm NAME keys C-c` stops it.\n")
-		b.WriteString("- `rterm NAME keys y Enter` answers prompts; `rterm NAME:server run \"…\"` uses a second named terminal (for dev servers).\n")
-		b.WriteString("- Ask the user before destructive commands or anything that needs admin rights.\n")
+		b.WriteString("You can run commands on these machines with the `rterm` CLI, in persistent shells the user watches live. Run `rterm guide` once for the full manual (exit codes, long-running commands, prompts, keys).\n\n")
+		b.WriteString(machinesText(hosts))
+		b.WriteString("\nQuick reference: `rterm NAME run \"<cmd>\"` · `rterm NAME read` · `rterm NAME keys C-c` · `rterm NAME wait \"<regex>\"` · `rterm NAME:server run \"…\"` for a second terminal. Ask the user before destructive commands.\n")
 		b.WriteString(noteEnd + "\n")
 		if text != "" {
 			text += "\n\n"
@@ -560,6 +571,48 @@ func writeClaudeNote(hosts map[string]Host) error {
 		return err
 	}
 	return os.WriteFile(path, []byte(strings.TrimLeft(text, "\n")), 0o644)
+}
+
+// machinesText lists paired machines with their OS and shell, one per line.
+func machinesText(hosts map[string]Host) string {
+	names := make([]string, 0, len(hosts))
+	for n := range hosts {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	var b strings.Builder
+	for _, n := range names {
+		h := hosts[n]
+		shell := "bash"
+		if h.OS == "windows" {
+			shell = "PowerShell, use PowerShell syntax"
+		}
+		fmt.Fprintf(&b, "- `%s`: %s (%s). Example: `rterm %s run \"%s\"`\n", n, osLabel(h.OS), shell, n, helloCmd(h.OS))
+	}
+	return b.String()
+}
+
+// Guide prints the manual for AI agents, plus the machines paired here.
+func Guide() int {
+	fmt.Print(docs.Guide)
+	if hosts, err := loadHosts(); err == nil && len(hosts) > 0 {
+		fmt.Print("\n## Machines paired on this computer\n\n" + machinesText(hosts))
+	} else {
+		fmt.Print("\n## Machines paired on this computer\n\nNone yet. The user pairs one with `rterm host init` there, then `rterm add` here.\n")
+	}
+	return 0
+}
+
+// InstallSkill installs (or refreshes) the Claude Code skill.
+func InstallSkill() int {
+	hosts, _ := loadHosts()
+	path, err := docs.InstallSkill(machinesText(hosts))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "✗ installing the Claude Code skill:", err)
+		return 1
+	}
+	fmt.Println("✓ Claude Code skill installed at", path)
+	return 0
 }
 
 func osLabel(goos string) string {
@@ -583,7 +636,7 @@ type flagSet map[string]string
 // command like `run ls --color` keeps its own flags.
 func takeFlags(args []string, leadingOnly ...bool) (flagSet, []string) {
 	f := flagSet{}
-	boolFlags := map[string]bool{"readonly": true, "local": true}
+	boolFlags := map[string]bool{"readonly": true, "local": true, "help": true}
 	var rest []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
