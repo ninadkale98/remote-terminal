@@ -11,7 +11,7 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/rterm/rterm/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
 )
 
 type unixPTY struct {

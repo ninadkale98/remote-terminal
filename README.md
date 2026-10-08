@@ -11,19 +11,19 @@ Claude runs on machine 1 and calls `rterm m2 run "…"` from its normal Bash too
 
 ## Install
 
-Download the binary for each machine from the [latest release](https://github.com/OWNER/REPO/releases/latest).
+Download the binary for each machine from the [latest release](https://github.com/ninadkale98/remote-terminal/releases/latest).
 
 **Linux / macOS:**
 
 ```sh
-curl -fL -o rterm https://github.com/OWNER/REPO/releases/latest/download/rterm-linux-amd64   # or -linux-arm64, -darwin-arm64, -darwin-amd64
+curl -fL -o rterm https://github.com/ninadkale98/remote-terminal/releases/latest/download/rterm-linux-amd64   # or -linux-arm64, -darwin-arm64, -darwin-amd64
 chmod +x rterm && mkdir -p ~/.local/bin && mv rterm ~/.local/bin/
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/OWNER/REPO/releases/latest/download/rterm-windows-amd64.exe -OutFile $env:USERPROFILE\Downloads\rterm.exe
+Invoke-WebRequest -Uri https://github.com/ninadkale98/remote-terminal/releases/latest/download/rterm-windows-amd64.exe -OutFile $env:USERPROFILE\Downloads\rterm.exe
 ```
 
 ## Set up: machine 2 first, then machine 1

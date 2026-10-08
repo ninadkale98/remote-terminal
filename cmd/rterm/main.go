@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rterm/rterm/internal/client"
-	"github.com/rterm/rterm/internal/host"
-	"github.com/rterm/rterm/internal/proto"
+	"github.com/ninadkale98/remote-terminal/internal/client"
+	"github.com/ninadkale98/remote-terminal/internal/host"
+	"github.com/ninadkale98/remote-terminal/internal/proto"
 )
 
 const usage = `rterm %s — a persistent, shared terminal on another machine, over SSH

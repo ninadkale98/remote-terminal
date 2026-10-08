@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rterm/rterm/internal/paths"
-	"github.com/rterm/rterm/internal/proto"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/proto"
 )
 
 // Info is what agent.json holds so local commands can reach the agent.

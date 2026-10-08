@@ -1,4 +1,4 @@
-module github.com/rterm/rterm
+module github.com/ninadkale98/remote-terminal
 
 go 1.24
 

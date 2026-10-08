@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/rterm/rterm/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
 )
 
 func startDetached(exe string, args ...string) error {

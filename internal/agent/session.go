@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rterm/rterm/internal/paths"
-	"github.com/rterm/rterm/internal/proto"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/proto"
 )
 
 // PTY is a running shell attached to a pseudo terminal.

@@ -20,9 +20,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/rterm/rterm/internal/agent"
-	"github.com/rterm/rterm/internal/paths"
-	"github.com/rterm/rterm/internal/proto"
+	"github.com/ninadkale98/remote-terminal/internal/agent"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/proto"
 )
 
 const usage = `rterm host — commands for the machine Claude controls

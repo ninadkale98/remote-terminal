@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rterm/rterm/internal/docs"
-	"github.com/rterm/rterm/internal/paths"
-	"github.com/rterm/rterm/internal/proto"
+	"github.com/ninadkale98/remote-terminal/internal/docs"
+	"github.com/ninadkale98/remote-terminal/internal/paths"
+	"github.com/ninadkale98/remote-terminal/internal/proto"
 )
 
 // Host is one paired machine.
