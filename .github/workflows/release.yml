@@ -1,14 +1,19 @@
 name: release
 
+# Runs when a v* tag is pushed, or when a release is published on GitHub's
+# Releases page (which creates the tag). Builds the binaries for six
+# platforms, attaches them to the GitHub release, and publishes the same
+# binaries to PyPI as `remote-terminal` wheels.
+
 on:
   push:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,31 +22,79 @@ jobs:
         with:
           go-version: "1.24"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Test
         run: go test ./internal/...
 
-      - name: Build
+      - name: Build binaries
         env:
           CGO_ENABLED: "0"
         run: |
+          version="${GITHUB_REF_NAME#v}"
           mkdir dist
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
             os=${t%/*}; arch=${t#*/}; ext=""
             [ "$os" = windows ] && ext=.exe
-            GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "dist/rterm-$os-$arch$ext" ./cmd/rterm
+            GOOS=$os GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X github.com/ninadkale98/remote-terminal/internal/proto.Version=$version" \
+              -o "dist/rterm-$os-$arch$ext" ./cmd/rterm
           done
           (cd dist && sha256sum rterm-* > SHA256SUMS)
+          ./dist/rterm-linux-amd64 version
 
-      - name: Publish
+      - name: Build wheels
+        run: |
+          python packaging/pypi/build_wheels.py "$GITHUB_REF_NAME" dist wheels
+          pip install --quiet twine
+          twine check --strict wheels/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: wheels/
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Attach binaries to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Works whether the tag was pushed from git or the release was
-          # created on GitHub's Releases page (which creates the tag).
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           else
             gh release create "$GITHUB_REF_NAME" dist/* \
               --title "rterm $GITHUB_REF_NAME" \
-              --notes "Download the binary for each machine. See the README for setup."
+              --notes "Install with \`pip install remote-terminal\`, or download the binary for each machine. See the README for setup."
           fi
+
+  pypi:
+    # Uses PyPI trusted publishing: no token is stored in this repo. PyPI must
+    # list this repo and release.yml as a trusted publisher for remote-terminal.
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels
+          path: wheels/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheels/

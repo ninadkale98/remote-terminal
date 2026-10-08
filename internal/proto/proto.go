@@ -8,8 +8,9 @@ import (
 	"io"
 )
 
-// Version is the rterm release version. Client and host must match on Proto.
-const Version = "0.1.0"
+// Version is the rterm release version. Release builds set it from the git
+// tag with -ldflags "-X github.com/ninadkale98/remote-terminal/internal/proto.Version=…".
+var Version = "0.1.0"
 
 // Proto is the wire protocol version.
 const Proto = 1

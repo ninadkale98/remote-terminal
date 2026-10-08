@@ -74,27 +74,38 @@ A hook in the shell's prompt records each command's exit code, which is how the 
 
 ## Install
 
-Download the binary for each machine from the [latest release](https://github.com/ninadkale98/remote-terminal/releases/latest).
+Install the same version on both machines. Any of these gives you the `rterm` command.
 
-**Linux / macOS:**
+**With pip** (any OS with Python 3):
 
 ```sh
-curl -fL -o rterm https://github.com/ninadkale98/remote-terminal/releases/latest/download/rterm-linux-amd64   # or -linux-arm64, -darwin-arm64, -darwin-amd64
-chmod +x rterm && mkdir -p ~/.local/bin && mv rterm ~/.local/bin/
+pip install remote-terminal          # or: pipx install remote-terminal / uv tool install remote-terminal
 ```
 
-**Windows (PowerShell):**
+The package is a self-contained native binary; Python is only used to install it.
+
+**Without Python, one line:**
+
+```sh
+# Linux / macOS (installs to ~/.local/bin, no sudo needed)
+curl -fsSL https://raw.githubusercontent.com/ninadkale98/remote-terminal/main/install.sh | sh
+```
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/ninadkale98/remote-terminal/releases/latest/download/rterm-windows-amd64.exe -OutFile $env:USERPROFILE\Downloads\rterm.exe
+# Windows PowerShell (installs to %LOCALAPPDATA%\rterm\bin and adds it to PATH)
+irm https://raw.githubusercontent.com/ninadkale98/remote-terminal/main/install.ps1 | iex
 ```
+
+Both scripts check the download against the release's SHA256 checksums. Set `RTERM_VERSION=v0.1.0` to pin a version.
+
+**Or download by hand** from the [latest release](https://github.com/ninadkale98/remote-terminal/releases/latest): `rterm-<os>-<arch>` for Linux and macOS, `rterm-windows-<arch>.exe` for Windows.
 
 ## Set up: machine 2 first, then machine 1
 
 **1. On machine 2** (the one Claude will control). On Windows, use an Administrator PowerShell so it can turn on the OpenSSH server:
 
 ```powershell
-& $env:USERPROFILE\Downloads\rterm.exe host init
+rterm host init
 ```
 
 This installs rterm to `~/.rterm/bin` and turns on the SSH server (installing it on Windows if needed). It then starts the session agent, checks that the shell works, and prints a pairing line like:
@@ -161,6 +172,6 @@ go build -o rterm ./cmd/rterm   # Go 1.24+; golang.org/x/sys and x/term are vend
 go test ./internal/...
 ```
 
-Releases are built by GitHub Actions when a `v*` tag is pushed or a release is published (`.github/workflows/release.yml`).
+Releases are built by GitHub Actions when a `v*` tag is pushed or a release is published (`.github/workflows/release.yml`). The workflow attaches the binaries to the GitHub release and publishes the same binaries to PyPI as platform wheels (`packaging/pypi/build_wheels.py`), using PyPI trusted publishing, so no token is stored in the repo.
 
 The demo animation is a scripted page, `docs/animation/demo.html`, recorded frame by frame with headless Chromium. To regenerate `docs/rterm-demo.gif` after editing it: `python3 docs/animation/record.py` (needs Playwright and ffmpeg).
