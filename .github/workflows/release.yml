@@ -36,6 +36,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "rterm $GITHUB_REF_NAME" \
-            --notes "Download the binary for each machine. See the README for setup."
+          # Works whether the tag was pushed from git or the release was
+          # created on GitHub's Releases page (which creates the tag).
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "rterm $GITHUB_REF_NAME" \
+              --notes "Download the binary for each machine. See the README for setup."
+          fi
