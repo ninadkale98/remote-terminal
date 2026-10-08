@@ -1,0 +1,184 @@
+<!doctype html>
+<!-- Source for docs/rterm-demo.gif. Rendered frame by frame by record.py:
+     each frame calls render(t) with t in seconds, so the output is deterministic. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0e1014; --box: #14171d; --pane: #0b0d11; --line: #2a303b;
+    --text: #d8dce4; --muted: #8b93a3; --accent: #e8875f; --link: #5aa9e6;
+    --ok: #62d394; --err: #f07a7a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 960px; height: 600px; background: var(--bg); color: var(--text);
+         font-family: "Inter", sans-serif; overflow: hidden; position: relative; }
+  .abs { position: absolute; }
+  .title { left: 24px; top: 18px; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  .subtitle { left: 24px; top: 46px; font-size: 13px; color: var(--muted); }
+  .box { border: 1px solid var(--line); background: var(--box); border-radius: 12px; }
+  .boxlabel { font-size: 13px; font-weight: 600; color: var(--text); }
+  .boxlabel span { font-weight: 400; color: var(--muted); }
+  .pane { background: var(--pane); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .pane.active { border-color: #3a4352; }
+  .phead { height: 26px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+           font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .dots { display: flex; gap: 5px; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: #2c323d; display: block; }
+  .live { margin-left: auto; display: flex; align-items: center; gap: 5px; color: var(--ok); }
+  .live b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: block; }
+  .term { padding: 8px 12px; font-family: "DejaVu Sans Mono", monospace; font-size: 13px;
+          line-height: 19px; white-space: pre; }
+  .m { color: var(--muted); } .a { color: var(--accent); } .ok { color: var(--ok); }
+  .er { color: var(--err); } .p { color: #7fb6ea; }
+  .cur { background: var(--text); color: var(--pane); }
+  .chan { font-size: 11.5px; color: var(--muted); text-align: center; width: 120px; }
+  .ssh { font-size: 12px; color: var(--link); font-weight: 600; text-align: center; width: 120px; }
+  .callout { border: 1px solid #2f5b46; background: #12261d; color: #bfeed5; border-radius: 8px;
+             font-size: 12px; line-height: 17px; padding: 8px 10px; transition: none; }
+  .caption { left: 24px; right: 24px; top: 536px; height: 46px; border-radius: 10px;
+             background: #151922; border: 1px solid var(--line); display: flex; align-items: center;
+             gap: 12px; padding: 0 14px; font-size: 14px; }
+  .step { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #1a0f0a;
+          font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .step.done { background: var(--ok); }
+</style>
+</head>
+<body>
+  <div class="abs title">Claude and you share one persistent shell on machine 2</div>
+  <div class="abs subtitle">rterm over plain SSH · Claude on Linux, controlling a Windows machine</div>
+
+  <!-- Machine 1 -->
+  <div class="abs box" style="left:20px; top:76px; width:480px; height:444px"></div>
+  <div class="abs boxlabel" style="left:36px; top:86px">Machine 1 <span>· Linux · where Claude runs</span></div>
+  <div id="claudePane" class="abs pane" style="left:34px; top:112px; width:452px; height:196px">
+    <div class="phead"><div class="dots"><i></i><i></i><i></i></div>Claude Code</div>
+    <div id="claude" class="term"></div>
+  </div>
+  <div id="viewPane" class="abs pane" style="left:34px; top:318px; width:452px; height:190px">
+    <div class="phead"><div class="dots"><i></i><i></i><i></i></div>Your pane · rterm watch m2
+      <div class="live"><b></b>live</div></div>
+    <div id="view" class="term"></div>
+  </div>
+
+  <!-- Channel -->
+  <div class="abs ssh" style="left:500px; top:150px">SSH</div>
+  <div class="abs chan" style="left:500px; top:166px">any network</div>
+  <div class="abs chan" style="left:500px; top:191px">rterm run</div>
+  <div class="abs chan" style="left:500px; top:394px">rterm watch</div>
+  <svg class="abs" style="left:0; top:0" width="960" height="600">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#3c4a5c"/>
+      </marker>
+    </defs>
+    <line x1="502" y1="212" x2="616" y2="212" stroke="#3c4a5c" stroke-width="1.5" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <line id="stream" x1="616" y1="415" x2="504" y2="415" stroke="#5aa9e6" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#ar)" opacity="0.35"/>
+    <circle id="packet" cx="502" cy="212" r="6" fill="#e8875f" opacity="0"/>
+  </svg>
+
+  <!-- Machine 2 -->
+  <div class="abs box" style="left:620px; top:76px; width:320px; height:444px"></div>
+  <div class="abs boxlabel" style="left:636px; top:86px">Machine 2 <span>· Windows</span></div>
+  <div id="m2Pane" class="abs pane" style="left:634px; top:112px; width:292px; height:328px">
+    <div class="phead"><div class="dots"><i></i><i></i><i></i></div>session "agent" · PowerShell</div>
+    <div id="m2" class="term"></div>
+  </div>
+  <div id="callout" class="abs callout" style="left:634px; top:452px; width:292px; opacity:0">
+    Still in <b>C:\app</b>. The shell keeps its folder,<br>variables and jobs between calls.
+  </div>
+
+  <div class="abs caption"><div id="step" class="step">1</div><div id="captext"></div></div>
+
+<script>
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Portion of s typed between t0 and t1.
+const typed = (s, t0, t1, t) => t <= t0 ? "" : t >= t1 ? s : s.slice(0, Math.round(s.length * (t - t0) / (t1 - t0)));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function render(t) {
+  const blink = Math.floor(t * 2) % 2 === 0;
+  const cursor = blink ? '<span class="cur"> </span>' : " ";
+
+  // ---- Claude pane: three calls, all running in the same remote shell
+  const bash = (cmd, t0, t1) => '<span class="a">●</span> <b>Bash</b>  ' + esc(typed(cmd, t0, t1, t));
+  const exit = (code, secs) => '<span class="m">[rterm: </span><span class="' + (code ? "er" : "ok") + '">exit ' + code + '</span><span class="m">, ' + secs + ']</span>';
+  const c = [];
+  if (t >= 0.6) c.push(bash('rterm m2 run "cd app; npm run build"', 0.7, 2.3));
+  if (t >= 5.8) c.push('<span class="er">  Cannot find module \'express\'</span>');
+  if (t >= 5.8) c.push("  " + exit(1, "3.2s"));
+  if (t >= 6.5) c.push(bash('rterm m2 run "npm install"', 6.6, 7.6));
+  if (t >= 10.9) c.push('<span class="m">  added 64 packages  </span>' + exit(0, "6.1s"));
+  if (t >= 11.5) c.push(bash('rterm m2 run "npm run build"', 11.6, 12.6));
+  if (t >= 15.8) c.push('<span class="ok">  Build succeeded</span>');
+  if (t >= 16.0) c.push("  " + exit(0, "2.8s"));
+  document.getElementById("claude").innerHTML = c.join("\n");
+
+  // ---- Remote session (shown on machine 2 and mirrored in your pane)
+  const s = [];
+  const p1 = '<span class="p">PS C:\\&gt;</span> ';
+  const p2 = '<span class="p">PS C:\\app&gt;</span> ';
+  const line = (prompt, cmd, t0, t1, until) => prompt + esc(typed(cmd, t0, t1, t)) + (t < until ? cursor : "");
+  s.push(line(p1, "cd app; npm run build", 3.0, 3.8, 4.6));
+  if (t >= 4.6) s.push('<span class="er">Cannot find module \'express\'</span>');
+  if (t >= 4.9) s.push(line(p2, "npm install", 8.3, 8.8, 9.8));
+  if (t >= 9.8) s.push('<span class="m">added 64 packages</span>');
+  if (t >= 10.0) s.push(line(p2, "npm run build", 13.3, 13.8, 14.6));
+  if (t >= 14.6) s.push('<span class="ok">Build succeeded</span>');
+  if (t >= 14.9) s.push(p2 + cursor);
+  const html = s.join("\n");
+  document.getElementById("m2").innerHTML = html;
+  document.getElementById("view").innerHTML = html;
+
+  // ---- Packets on the run link: out (orange) and back (green) for each call
+  const pk = document.getElementById("packet");
+  const legs = [[2.4, 3.0, 1], [5.1, 5.7, -1], [7.7, 8.3, 1], [10.2, 10.8, -1], [12.7, 13.3, 1], [15.1, 15.7, -1]];
+  let shown = false;
+  for (const [a, b, dir] of legs) {
+    if (t >= a && t <= b) {
+      const f = (t - a) / (b - a);
+      const x = dir > 0 ? 502 + 114 * f : 616 - 114 * f;
+      pk.setAttribute("cx", x);
+      pk.setAttribute("fill", dir > 0 ? "#e8875f" : "#62d394");
+      pk.setAttribute("opacity", 1);
+      shown = true;
+    }
+  }
+  if (!shown) pk.setAttribute("opacity", 0);
+
+  // ---- Live mirror stream: animate while the remote screen is changing
+  const active = (t >= 3.0 && t < 5.1) || (t >= 8.3 && t < 10.2) || (t >= 13.3 && t < 15.1);
+  const st = document.getElementById("stream");
+  st.setAttribute("stroke-dashoffset", (t * 40).toFixed(1));
+  st.setAttribute("opacity", active ? 1 : 0.35);
+
+  // ---- Pane emphasis
+  const claudeActive = (t >= 0.6 && t < 2.4) || (t >= 5.8 && t < 7.7) || (t >= 10.9 && t < 12.7) || t >= 15.8;
+  document.getElementById("claudePane").classList.toggle("active", claudeActive);
+  document.getElementById("m2Pane").classList.toggle("active", active);
+  document.getElementById("viewPane").classList.toggle("active", active);
+
+  // ---- Callout about persisted state
+  document.getElementById("callout").style.opacity = clamp((t - 8.2) / 0.4, 0, 1);
+
+  // ---- Caption
+  const caps = [
+    [0, "1", "Claude calls rterm from its normal Bash tool"],
+    [2.4, "2", "rterm types it into the persistent PowerShell on machine 2, and you watch it live"],
+    [5.1, "3", "The output and the real exit code come back to Claude"],
+    [6.5, "4", "Claude fixes it with another command. No cd needed: the shell kept its state"],
+    [11.5, "5", "It builds again in the same shell, while you watch every keystroke"],
+    [15.8, "✓", "One shell, shared by Claude and you, over plain SSH"],
+  ];
+  let cap = caps[0];
+  for (const k of caps) if (t >= k[0]) cap = k;
+  const step = document.getElementById("step");
+  step.textContent = cap[1];
+  step.classList.toggle("done", cap[1] === "✓");
+  document.getElementById("captext").textContent = cap[2];
+}
+window.render = render;
+render(0);
+</script>
+</body>
+</html>
