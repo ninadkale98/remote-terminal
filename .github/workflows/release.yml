@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Test
+        run: go test ./internal/...
+
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          mkdir dist
+          for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os=${t%/*}; arch=${t#*/}; ext=""
+            [ "$os" = windows ] && ext=.exe
+            GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "dist/rterm-$os-$arch$ext" ./cmd/rterm
+          done
+          (cd dist && sha256sum rterm-* > SHA256SUMS)
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "rterm $GITHUB_REF_NAME" \
+            --notes "Download the binary for each machine. See the README for setup."
